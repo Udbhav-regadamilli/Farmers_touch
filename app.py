@@ -1,0 +1,174 @@
+import nltk
+import pickle
+import numpy as np
+import json
+import random
+
+from keras.models import load_model
+from flask_cors import CORS
+from nltk.stem import WordNetLemmatizer
+
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session
+from database import Database
+from datetime import timedelta
+
+nltk.download('popular')
+
+lemmatizer = WordNetLemmatizer()
+model = load_model('model.h5') 
+intents = json.loads(open('data_crop.json').read())
+words = pickle.load(open('texts.pkl', 'rb'))
+classes = pickle.load(open('labels.pkl', 'rb'))
+db = Database('crop') # using the database crop.
+
+def clean_up_sentence(sentence):
+    sentence_words = nltk.word_tokenize(sentence)
+    sentence_words = [lemmatizer.lemmatize(word.lower()) for word in sentence_words]
+    return sentence_words
+
+def bow(sentence, words, show_details=True):
+    sentence_words = clean_up_sentence(sentence)
+    bag = [0] * len(words)
+    for s in sentence_words:
+        for i, w in enumerate(words):
+            if w == s:
+                bag[i] = 1
+                if show_details:
+                    print("found in bag: %s" % w)
+    return np.array(bag)
+
+def predict_class(sentence, model):
+    p = bow(sentence, words, show_details=False)
+    res = model.predict(np.array([p]))[0]
+    ERROR_THRESHOLD = 0.25
+    results = [[i, r] for i, r in enumerate(res) if r > ERROR_THRESHOLD]
+    results.sort(key=lambda x: x[1], reverse=True)
+    return_list = [{"intent": classes[r[0]], "probability": str(r[1])} for r in results]
+    return return_list
+
+def getResponse(ints, intents_json):
+    tag = ints[0]['intent']
+    list_of_intents = intents_json['intents']
+    for i in list_of_intents:
+        if i['tag'] == tag:
+            result = random.choice(i['responses'])
+            break
+    return result
+
+def chatbot_response(msg):
+    ints = predict_class(msg, model)
+    res = getResponse(ints, intents)
+    return res
+
+app = Flask(__name__)
+CORS(app)
+app.static_folder = 'static'
+app.secret_key = '@VMSIRI'
+app.permanent_session_lifetime = timedelta(minutes=30)
+
+@app.route("/")
+def home():
+    return render_template("bloghtml.html")  # Adjust the path to the template folder
+
+@app.route("/garden", methods=['GET'])
+def garden():
+    if 'username' in session:
+        return render_template("garden.html")
+    return redirect(url_for('login'))
+
+@app.route("/fruits")
+def fruits():
+    return render_template("fruits.html")
+
+@app.route("/flower")
+def flower():
+    return render_template("flower.html")
+
+@app.route("/veg")
+def veg():
+    return render_template("veg.html")
+
+@app.route("/bloghtml")
+def bloghtml():
+    return render_template("bloghtml.html")
+
+@app.route("/login", methods=['POST', 'GET'])
+def login():
+    if 'username' in session:
+        return redirect(url_for('garden'))
+    if request.method == 'POST':
+        username = request.form.get('Username')
+        password = request.form.get('Password')
+        if(db.validate(table_name='users', data=(username, username, password))):
+            print("Logged In")
+            session['username'] = username
+            return redirect(url_for('garden'))
+        else:
+            print("Not Logged In")
+            return render_template('login.html', messageL="Please verify your username and password")
+    else:
+        return render_template("login.html")
+    
+@app.route("/signup", methods=['POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form.get('Username')
+        password = request.form.get('Password')
+        email = request.form.get('Email')
+        location = request.form.get('Location')
+
+        if(not db.isExist(table_name='users', data=(username, email))):
+            db.insert(tableName='users', data=(username, password, email, location))
+            session['username'] = username
+            return redirect(url_for('garden'))
+        else:
+            print("User already exists")
+            return render_template('login.html', messageL="User already Exists", messageS="User already Exists")
+    else:
+        return redirect(url_for('login'))
+
+@app.route("/contact", methods=['POST'])
+def contact():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        number = request.form.get('number')
+        subject = request.form.get('subject')
+        message = request.form.get('msg')
+
+        print(username)
+
+        db.insert(tableName='contact', data=(username, email, number, subject, message))
+    
+    return redirect(url_for('bloghtml'))
+
+@app.route("/get")
+def get_bot_response():
+    userText = request.args.get('msg')
+    print("Received message:", userText)
+    return chatbot_response(userText)
+
+@app.route("/soil")
+def soil():
+    return render_template("soil.html")
+
+@app.route("/orders", methods=['GET', 'POST'])
+def orderPage():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        order_details = request.json
+        # Process the order details as needed
+        user_id = db.getId('users', order_details['username'])
+
+        for product in order_details['products']:
+            db.insert(tableName='orders', data=(product['name'], product['quantity'], product['price'], user_id))
+
+        db.display(table_name='orders')
+        
+        return jsonify({'message': 'Order received successfully'}), 200
+    
+    return render_template("orderPage.html", username=session.get('username'))
+
+if __name__ == "__main__":
+    app.run(debug=True)
