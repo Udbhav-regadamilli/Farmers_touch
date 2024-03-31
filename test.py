@@ -13,6 +13,6 @@ db = Database('crop')
 
 # db.display(table_name='users')
 db.display(table_name='contact')
-db.getId(tableName='users', value='luckyudbhav@gmail.com')
-# db.insert(tableName='orders', data=('pineapple', 1, 10, 1))
+# db.getId(tableName='users', value='luckyudbhav@gmail.com')
+db.insert(tableName='orders', data=('pineapple', 1, 10, 1, 'udbhav', 'vizag', 123456789, 123))
 db.display(table_name='orders')

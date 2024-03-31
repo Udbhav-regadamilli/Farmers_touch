@@ -166,15 +166,17 @@ document.addEventListener("DOMContentLoaded", function () {
       .forEach(function (productElement) {
         productElement = productElement.querySelector(".content");
         const name = productElement.querySelector("h1").textContent; // Get the product name
-        const price = parseFloat(
-          productElement.querySelector(".price").textContent.substring(1, 5)
-        ); // Get the product price
 
         // Check if the .quantity-value element exists inside the productElement
         const quantityElement = productElement.querySelector(".quantity-value");
         const quantity = quantityElement
           ? parseInt(quantityElement.textContent)
           : 0; // Get the product quantity, or 0 if not found
+
+        const price = parseFloat(
+          productElement.querySelector(".price").textContent.substring(1, 5) *
+            quantity
+        ).toFixed(2); // Get the product price
 
         // Push the product details to the products array
         products.push({ name, price, quantity });
@@ -197,22 +199,14 @@ document.addEventListener("DOMContentLoaded", function () {
       })
         .then((response) => {
           if (response.ok) {
-            // If the response is successful, redirect the user to a success page or perform any other desired action
-            displayErrorMessage("Ordered Placed Successfully", 1500);
-
-            document
-              .querySelector(".shopping-cart")
-              .querySelectorAll(".box")
-              .forEach((box) => {
-                box.remove();
-              });
-
-            document
-              .querySelector(".shopping-cart")
-              .querySelector(".total").innerHTML = "";
+            // If the response indicates success, redirect the user to the payment page
+            window.location.href = "/payment";
           } else {
-            // If there's an error, display an error message to the user or handle it accordingly
-            displayErrorMessage("Ordered Failed", 1500);
+            // If the response indicates an error, display an error message
+            displayErrorMessage(
+              "Error processing order. Please try again.",
+              1500
+            );
           }
         })
         .catch((error) => {

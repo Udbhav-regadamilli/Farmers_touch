@@ -81,6 +81,7 @@ section {
   background: var(--green);
   color: #fff;
 }
+
 .header {
   position: absolute;
   top: 0;

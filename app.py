@@ -12,13 +12,13 @@ from flask import Flask, jsonify, render_template, request, redirect, url_for, s
 from database import Database
 from datetime import timedelta
 
-nltk.download('popular')
+# nltk.download('popular')
 
-lemmatizer = WordNetLemmatizer()
-model = load_model('model.h5') 
-intents = json.loads(open('data_crop.json').read())
-words = pickle.load(open('texts.pkl', 'rb'))
-classes = pickle.load(open('labels.pkl', 'rb'))
+# lemmatizer = WordNetLemmatizer()
+# model = load_model('model.h5') 
+# intents = json.loads(open('data_crop.json').read())
+# words = pickle.load(open('texts.pkl', 'rb'))
+# classes = pickle.load(open('labels.pkl', 'rb'))
 db = Database('crop') # using the database crop.
 
 def clean_up_sentence(sentence):
@@ -156,19 +156,45 @@ def soil():
 def orderPage():
     if 'username' not in session:
         return redirect(url_for('login'))
-    if request.method == 'POST':
+    
+    if request.method == 'POST':    
         order_details = request.json
+        session['order_details'] = order_details
+        
+        return redirect(url_for('payment'))
+    
+    return render_template("orderPage.html", username=session.get('username'))
+
+@app.route("/payment", methods=['GET', 'POST'])
+def payment():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        name = request.form.get('state')
+        location = request.form.get('address')
+        cardNo = request.form.get('card_number')
+        cvv = request.form.get('CVV')
+        order_details = session['order_details']
+        
         # Process the order details as needed
         user_id = db.getId('users', order_details['username'])
 
+        # Inserting data into the database.
         for product in order_details['products']:
-            db.insert(tableName='orders', data=(product['name'], product['quantity'], product['price'], user_id))
+            db.insert(tableName='orders', data=(product['name'], 
+                                                product['quantity'], 
+                                                product['price'], user_id, 
+                                                name, location, cardNo, cvv))
 
         db.display(table_name='orders')
-        
-        return jsonify({'message': 'Order received successfully'}), 200
-    
-    return render_template("orderPage.html", username=session.get('username'))
+        return redirect(url_for('popup'))
+
+    return render_template("payment.html")
+
+@app.route("/popup")
+def popup():
+    return render_template("popup.html")
 
 if __name__ == "__main__":
     app.run(debug=True)

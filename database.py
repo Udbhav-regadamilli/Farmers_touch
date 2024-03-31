@@ -48,11 +48,17 @@ class Database:
                 
                 # For storing all the orders that are placed.
                 cursor.execute('''CREATE TABLE IF NOT EXISTS orders (
-                    id INTEGER PRIMARY KEY,
-                    product_name TEXT NOT NULL,
-                    quantity NUMBER NOT NULL,
-                    price NUMBER NOT NULL,
-                    customer_id NUMBER NOT NULL)''')
+                                id INTEGER PRIMARY KEY,
+                                product_name TEXT NOT NULL,
+                                quantity NUMBER NOT NULL,
+                                price NUMBER NOT NULL,
+                                customer_id NUMBER NOT NULL,
+                                name TEXT NOT NULL,
+                                location TEXT NOT NULL,
+                                cardNo NUMBER NOT NULL,
+                                CVV NUMBER NOT NULL,
+                                orderDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)'''
+                            )
                 
         except sqlite3.Error as e:
             print("Error:", e)
@@ -76,8 +82,8 @@ class Database:
                     
                     # placing the orders of the user.
                     elif tableName == 'orders':
-                        cursor.execute(f'''INSERT INTO {tableName} (product_name, quantity, price, customer_id)
-                                       VALUES (?, ?, ?, ?)''', (data))
+                        cursor.execute(f'''INSERT INTO {tableName} (product_name, quantity, price, customer_id, name, location, cardNo, CVV)
+                                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', (data))
                 else:
                     print("Error: Verify the table name")
         except sqlite3.Error as e:
@@ -152,7 +158,9 @@ class Database:
 
                     cursor.execute(f"SELECT id FROM {tableName} WHERE username = ? or email = ?", (value, value))
                     rows = cursor.fetchone()
-                    return rows[0]
+                    if(rows):
+                        return rows[0]
+                    return "No user exists"
             else:
                 print("Verify the table name")
         except sqlite3.Error as e:
