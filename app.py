@@ -12,13 +12,13 @@ from flask import Flask, jsonify, render_template, request, redirect, url_for, s
 from database import Database
 from datetime import timedelta
 
-# nltk.download('popular')
+nltk.download('popular')
 
-# lemmatizer = WordNetLemmatizer()
-# model = load_model('model.h5') 
-# intents = json.loads(open('data_crop.json').read())
-# words = pickle.load(open('texts.pkl', 'rb'))
-# classes = pickle.load(open('labels.pkl', 'rb'))
+lemmatizer = WordNetLemmatizer()
+model = load_model('model.h5') 
+intents = json.loads(open('data_crop.json').read())
+words = pickle.load(open('texts.pkl', 'rb'))
+classes = pickle.load(open('labels.pkl', 'rb'))
 db = Database('crop') # using the database crop.
 
 def clean_up_sentence(sentence):
