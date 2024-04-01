@@ -8,7 +8,7 @@ from keras.models import load_model
 from flask_cors import CORS
 from nltk.stem import WordNetLemmatizer
 
-from flask import Flask, jsonify, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session
 from database import Database
 from datetime import timedelta
 
@@ -43,7 +43,9 @@ def predict_class(sentence, model):
     ERROR_THRESHOLD = 0.25
     results = [[i, r] for i, r in enumerate(res) if r > ERROR_THRESHOLD]
     results.sort(key=lambda x: x[1], reverse=True)
-    return_list = [{"intent": classes[r[0]], "probability": str(r[1])} for r in results]
+    return_list = [{"intent": classes[r[0]], "probability": float(r[1])} for r in results]
+    if len(return_list) == 0:
+        return [{"intent": "unkown", "probability": 0}]
     return return_list
 
 def getResponse(ints, intents_json):
@@ -57,8 +59,12 @@ def getResponse(ints, intents_json):
 
 def chatbot_response(msg):
     ints = predict_class(msg, model)
-    res = getResponse(ints, intents)
-    return res
+    print(ints)
+    if ints[0]['probability'] < 0.7:
+        return "I'm sorry, I didn't understand that. Could you please rephrase your question?"
+    else:
+        res = getResponse(ints, intents)
+        return res
 
 app = Flask(__name__)
 CORS(app)
